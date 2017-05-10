@@ -2,6 +2,10 @@
 #include <Wire.h>
 #include <SparkFunDS1307RTC.h>
 
+#include <Wire.h>
+#include <Adafruit_MMA8451.h>
+#include <Adafruit_Sensor.h>
+
 //define table for the digit geometry, MSB first
 #define DIG_0 0x3F 
 #define DIG_1 0x06 
@@ -55,7 +59,13 @@ bool switch3high = true;
 
 bool notAlarmSuppress = true;
 
+Adafruit_MMA8451 mma = Adafruit_MMA8451();
+
+bool interrupted = false;
+
 void setup() {
+
+  attachInterrupt(digitalPinToInterrupt(2), mmaInterrupt, RISING);
   //LED 7-segment outputs
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
@@ -67,6 +77,12 @@ void setup() {
   rtc.set12Hour();
   
   pinMode(6, OUTPUT);
+  if (! mma.begin()) {
+    Serial.println("Couldnt start");
+    
+    while (1);
+  }
+  Serial.println("MMA8451 found!");
 }
 
 void loop() {
@@ -156,11 +172,11 @@ void loop() {
 
       if(!switch2high){
         rtc.set24Hour();
-        rtc.setTime(rtc.second(), rtc.minute(), ((rtc.hour() + 1) % 25),  4 , 10, 5, 17);
+        rtc.setHour(((rtc.hour() + 1) % 25));
         rtc.set12Hour();
       }else{
         rtc.set24Hour();
-        rtc.setTime(rtc.second(), ((rtc.minute() + 1) % 60) , rtc.hour(), 4 , 10, 5, 17);
+        rtc.setMinute(((rtc.minute() + 1) % 60));
         rtc.set12Hour();
       }
       next_state = SETMODEs;
@@ -172,9 +188,11 @@ void loop() {
       updateTime();
       notAlarmSuppress = false;
       analogWrite(6, 126);
+      timecheck();
       next_state = ALARMs;
-      if(setButtonPressed2()){
+      if(interrupted){
         next_state = MAINs;
+        interrupted = false;
       }
       break;
     }
@@ -356,6 +374,17 @@ bool setButtonPressed3(){
   return false;
 }
 
+void timecheck(){
+  mma.read();
+  if(abs(mma.x) > 2000){
+    interrupted = true;
+  }else if(abs(mma.y) > 2000){
+    interrupted = true;
+  }else if(abs(mma.z) > 5500){
+    interrupted = true;
+  }
+}
+
 bool isClkPM(){
   rtc.set24Hour();
   if(rtc.hour() > 12){
@@ -366,6 +395,8 @@ bool isClkPM(){
   return false;
 }
 
-
+void mmaInterrupt(){
+  //interrupted = true;
+}
 
 
