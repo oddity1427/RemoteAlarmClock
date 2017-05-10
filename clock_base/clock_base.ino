@@ -30,6 +30,7 @@
 #define ERRORs   0x05
 #define DAYHALFs 0x06
 #define SETALARMs 0x07
+#define AUPDATEs 0x08
 
 //the digit geometry values put into an array so they are easier to call by an int value
 int displayCodes[17] = { DIG_0, DIG_1, DIG_2, DIG_3, DIG_4, DIG_5, DIG_6, DIG_7, DIG_8, DIG_9, DIG_A, DIG_B, DIG_C, DIG_D, DIG_E, DIG_F, DIG_DOT } ;
@@ -63,7 +64,7 @@ void setup() {
   rtc.autoTime();
   rtc.set12Hour();
   
- 
+  pinMode(6, OUTPUT);
 }
 
 void loop() {
@@ -81,14 +82,31 @@ void loop() {
     case MAINs:
     {
       updateTime();
+
+      analogWrite(6, 0);
+
       if(!setButtonPressed1()){
         switch1high = true;
       }
+      if(!setButtonPressed2()){
+        switch2high = true;
+      }
+      if(!setButtonPressed3()){
+        switch3high = true;
+      }
+
+      
       if(alarmTime()){
         next_state = ALARMs;
       }else if(setButtonPressed1() && switch1high){
         next_state = SETMODEs;
         switch1high = false;
+      }else if(setButtonPressed2() && switch2high){
+        next_state = DAYHALFs;
+        switch2high = false;
+      }else if(setButtonPressed3() && switch3high){
+        next_state = SETALARMs;
+        switch3high = false;
       }else{
         next_state = MAINs;
       }
@@ -145,19 +163,83 @@ void loop() {
       
     case ALARMs:
     {
+      updateTime();
+      analogWrite(6, 126);
+      next_state = ALARMs;
+      if(setButtonPressed2()){
+        next_state = MAINs;
+      }
       break;
     }
       
     case DAYHALFs:
     {
+      
+      printDayHalf();
+      next_state = DAYHALFs;
+      if(!setButtonPressed1()){
+        switch1high = true;
+      }
+      if(!setButtonPressed2()){
+        switch2high = true;
+      }
+      if(!setButtonPressed3()){
+        switch3high = true;
+      }
+      
+      if(setButtonPressed2() && switch2high){
+        next_state = MAINs;
+        switch2high = false;
+      }
       break;
     }
       
      case SETALARMs:
     {
+      shiftAlarms();
+      next_state = SETALARMs;
+      if(!setButtonPressed1()){
+        switch1high = true;
+      }
+      if(!setButtonPressed2()){
+        switch2high = true;
+      }
+      if(!setButtonPressed3()){
+        switch3high = true;
+      }
+      
+      if(setButtonPressed1() && switch1high){
+        next_state = AUPDATEs;
+        switch1high = false;
+      }
+      if(setButtonPressed2() && switch2high){
+        next_state = AUPDATEs;
+        switch2high = false;
+      }
+      if(setButtonPressed3() && switch3high){
+        next_state = MAINs;
+        switch3high = false;
+      }
       break;
     }
+
+    
+    case AUPDATEs:
+    {
+     next_state = SETALARMs;
+     if(!switch1high){
+      if(alarmHours == 11){
+        alarmIsPM = !alarmIsPM;
+      }
+      alarmHours = (alarmHours + 1) % 13;
       
+     }else{
+      alarmMinutes = (alarmMinutes + 1) % 60; 
+     }
+     break;   
+    }
+
+    
     case ERRORs:
     {
       next_state = STARTs;
@@ -182,8 +264,20 @@ void loop() {
 
 }
 
+void shiftAlarms(){
+  int thirdDigit = displayCodes[alarmMinutes % 10];
+  int secondDigit = displayCodes[alarmMinutes / 10];
+  int firstDigit = displayCodes[alarmHours];
+
+  digitalWrite(8, LOW);
+  shiftOut(13, 9, MSBFIRST, thirdDigit);
+  shiftOut(13, 9, MSBFIRST, secondDigit);
+  shiftOut(13, 9, MSBFIRST, firstDigit);
+  digitalWrite(8, HIGH);
+}
+
 void updateTime(){
-  dotcounter = (dotcounter + 1) % 1000;
+  dotcounter = (dotcounter + 1) % 666;
   rtc.update();
 
   int thirdDigit  = displayCodes[rtc.minute() % 10];
@@ -192,7 +286,7 @@ void updateTime(){
 
   int firstDigit  = displayCodes[rtc.hour()];
 
-  if(dotcounter < 500){
+  if(dotcounter < 333){
     firstDigit = firstDigit | DIG_DOT;
   }
   
@@ -211,6 +305,25 @@ bool alarmTime(){
     }
   }
   return false;
+}
+
+void printDayHalf(){
+
+  
+  int firstDigit = 0x00;
+  int secondDigit = DIG_A;
+  int thirdDigit = 0x00;
+
+  if(rtc.pm()){
+    secondDigit = secondDigit & 0xFB;
+  }
+  
+  digitalWrite(8, LOW);
+  shiftOut(13, 9, MSBFIRST, thirdDigit);
+  shiftOut(13, 9, MSBFIRST, secondDigit);
+  shiftOut(13, 9, MSBFIRST, firstDigit);
+  digitalWrite(8, HIGH);
+
 }
 
 bool setButtonPressed1(){
@@ -234,7 +347,15 @@ bool setButtonPressed3(){
   return false;
 }
 
-
+bool isClkPM(){
+  rtc.set24Hour();
+  if(rtc.hour() > 12){
+    rtc.set12Hour();
+    return true ;
+  }
+  rtc.set12Hour();
+  return false;
+}
 
 
 
