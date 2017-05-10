@@ -47,6 +47,11 @@ int alarmHours = 1;
 int alarmMinutes = 1;
 bool alarmIsPM = false;
 
+//bool to effectively detect a separate press event
+bool switch1high = true;
+bool switch2high = true;
+bool switch3high = true;
+
 void setup() {
   //LED 7-segment outputs
   pinMode(8, OUTPUT);
@@ -58,7 +63,7 @@ void setup() {
   rtc.autoTime();
   rtc.set12Hour();
   
- Serial.begin(9600);
+ 
 }
 
 void loop() {
@@ -70,45 +75,89 @@ void loop() {
     case STARTs:
     {
       next_state = MAINs;
-    }
       break;
+    }
+      
     case MAINs:
     {
       updateTime();
+      if(!setButtonPressed1()){
+        switch1high = true;
+      }
       if(alarmTime()){
         next_state = ALARMs;
-      }else if(setButtonPressed()){
+      }else if(setButtonPressed1() && switch1high){
         next_state = SETMODEs;
+        switch1high = false;
       }else{
         next_state = MAINs;
       }
-    }
       break;
+    }
+      
     case SETMODEs:
     {
+      updateTime();
+      next_state = SETMODEs;
+      if(!setButtonPressed1()){
+        switch1high = true;
+      }
+      if(!setButtonPressed2()){
+        switch2high = true;
+      }
+      if(!setButtonPressed3()){
+        switch3high = true;
+      }
       
-    }
+      if(setButtonPressed1() && switch1high){
+        next_state = MAINs;
+        switch1high = false;
+      }
+      if(setButtonPressed2() && switch2high){
+        next_state = SETTINGs;
+        switch2high = false;
+      }
+      if(setButtonPressed3() && switch3high){
+        next_state = SETTINGs;
+        switch3high = false;
+      }
+
+      
+      
       break;
+    }
+      
     case SETTINGs:
     {
-      
-    }
+
+      if(!switch2high){
+        rtc.set24Hour();
+        rtc.setTime(rtc.second(), rtc.minute(), ((rtc.hour() + 1) % 25),  4 , 10, 5, 17);
+        rtc.set12Hour();
+      }else{
+        rtc.set24Hour();
+        rtc.setTime(rtc.second(), ((rtc.minute() + 1) % 60) , rtc.hour(), 4 , 10, 5, 17);
+        rtc.set12Hour();
+      }
+      next_state = SETMODEs;
       break;
+    }
+      
     case ALARMs:
     {
-      
-    }
       break;
+    }
+      
     case DAYHALFs:
     {
-      
-    }
       break;
+    }
+      
      case SETALARMs:
     {
-      
-    }
       break;
+    }
+      
     case ERRORs:
     {
       next_state = STARTs;
@@ -119,13 +168,16 @@ void loop() {
       shiftOut(13, 9, MSBFIRST, 0x00);
       delay(333);
       shiftOut(13, 9, MSBFIRST, 0x00);
-    }
+
       break;
+    }
+      
     default:
     {
       next_state = ERRORs;
-    }
       break;
+    }
+      
   }
 
 }
@@ -133,20 +185,13 @@ void loop() {
 void updateTime(){
   dotcounter = (dotcounter + 1) % 1000;
   rtc.update();
-  Serial.print(rtc.minute());
-  Serial.print(",");
-  Serial.print(rtc.hour());
-  Serial.println(",");
 
   int thirdDigit  = displayCodes[rtc.minute() % 10];
-  Serial.print(thirdDigit);
-  Serial.print(",");
-  int secondDigit = displayCodes[floor(rtc.minute() / 10)];
-  Serial.print(secondDigit);
-  Serial.print(",");
+
+  int secondDigit = displayCodes[rtc.minute() / 10];
+
   int firstDigit  = displayCodes[rtc.hour()];
-  Serial.print(firstDigit);
-  Serial.println(",");
+
   if(dotcounter < 500){
     firstDigit = firstDigit | DIG_DOT;
   }
@@ -168,8 +213,22 @@ bool alarmTime(){
   return false;
 }
 
-bool setButtonPressed(){
+bool setButtonPressed1(){
   if(digitalRead(2)){
+    return true;
+  }
+  return false;
+}
+
+bool setButtonPressed2(){
+  if(digitalRead(3)){
+    return true;
+  }
+  return false;
+}
+
+bool setButtonPressed3(){
+  if(digitalRead(4)){
     return true;
   }
   return false;
