@@ -1,9 +1,182 @@
-void setup() {
-  // put your setup code here, to run once:
+//necessary includes to use the RTC module
+#include <Wire.h>
+#include <SparkFunDS1307RTC.h>
 
+//define table for the digit geometry, MSB first
+#define DIG_0 0x3F 
+#define DIG_1 0x06 
+#define DIG_2 0x5B 
+#define DIG_3 0x4F 
+#define DIG_4 0x66
+#define DIG_5 0x6D
+#define DIG_6 0x7D 
+#define DIG_7 0x07
+#define DIG_8 0x7F
+#define DIG_9 0x67
+#define DIG_A 0x77
+#define DIG_B 0x7C
+#define DIG_C 0x39
+#define DIG_D 0x5E
+#define DIG_E 0x79
+#define DIG_F 0x71
+#define DIG_DOT 0x80
+
+//state defines
+#define STARTs   0x00
+#define MAINs    0x01
+#define SETMODEs 0x02
+#define SETTINGs 0x03
+#define ALARMs   0x04
+#define ERRORs   0x05
+#define DAYHALFs 0x06
+#define SETALARMs 0x07
+
+//the digit geometry values put into an array so they are easier to call by an int value
+int displayCodes[17] = { DIG_0, DIG_1, DIG_2, DIG_3, DIG_4, DIG_5, DIG_6, DIG_7, DIG_8, DIG_9, DIG_A, DIG_B, DIG_C, DIG_D, DIG_E, DIG_F, DIG_DOT } ;
+
+//the initial states that the machine will take
+int current_state = STARTs;
+int previous_state = STARTs;
+int next_state = MAINs;
+
+//variable to count and change the dot signifying that the clock is working
+int dotcounter = 0;
+
+//variables to hold the current state of the alarm
+int alarmHours = 1;
+int alarmMinutes = 1;
+bool alarmIsPM = false;
+
+void setup() {
+  //LED 7-segment outputs
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(13, OUTPUT);
+  
+  //RTC intialization
+  rtc.begin();
+  rtc.autoTime();
+  rtc.set12Hour();
+  
+ Serial.begin(9600);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  previous_state = current_state;
+  current_state = next_state;
+  next_state = ERRORs;
+
+  switch(current_state){
+    case STARTs:
+    {
+      next_state = MAINs;
+    }
+      break;
+    case MAINs:
+    {
+      updateTime();
+      if(alarmTime()){
+        next_state = ALARMs;
+      }else if(setButtonPressed()){
+        next_state = SETMODEs;
+      }else{
+        next_state = MAINs;
+      }
+    }
+      break;
+    case SETMODEs:
+    {
+      
+    }
+      break;
+    case SETTINGs:
+    {
+      
+    }
+      break;
+    case ALARMs:
+    {
+      
+    }
+      break;
+    case DAYHALFs:
+    {
+      
+    }
+      break;
+     case SETALARMs:
+    {
+      
+    }
+      break;
+    case ERRORs:
+    {
+      next_state = STARTs;
+      shiftOut(13, 9, MSBFIRST, DIG_DOT);
+      delay(333);
+      shiftOut(13, 9, MSBFIRST, 0x00);
+      delay(333);
+      shiftOut(13, 9, MSBFIRST, 0x00);
+      delay(333);
+      shiftOut(13, 9, MSBFIRST, 0x00);
+    }
+      break;
+    default:
+    {
+      next_state = ERRORs;
+    }
+      break;
+  }
 
 }
+
+void updateTime(){
+  dotcounter = (dotcounter + 1) % 1000;
+  rtc.update();
+  Serial.print(rtc.minute());
+  Serial.print(",");
+  Serial.print(rtc.hour());
+  Serial.println(",");
+
+  int thirdDigit  = displayCodes[rtc.minute() % 10];
+  Serial.print(thirdDigit);
+  Serial.print(",");
+  int secondDigit = displayCodes[floor(rtc.minute() / 10)];
+  Serial.print(secondDigit);
+  Serial.print(",");
+  int firstDigit  = displayCodes[rtc.hour()];
+  Serial.print(firstDigit);
+  Serial.println(",");
+  if(dotcounter < 500){
+    firstDigit = firstDigit | DIG_DOT;
+  }
+  
+  digitalWrite(8, LOW);
+  shiftOut(13, 9, MSBFIRST, thirdDigit);
+  shiftOut(13, 9, MSBFIRST, secondDigit);
+  shiftOut(13, 9, MSBFIRST, firstDigit);
+  digitalWrite(8, HIGH);
+  
+}
+
+bool alarmTime(){
+  if((rtc.pm() && alarmIsPM) || ((!rtc.pm() && !alarmIsPM))){
+    if((rtc.hour() == alarmHours) && (rtc.minute() == alarmMinutes)){
+      return true;
+    }
+  }
+  return false;
+}
+
+bool setButtonPressed(){
+  if(digitalRead(2)){
+    return true;
+  }
+  return false;
+}
+
+
+
+
+
+
