@@ -53,6 +53,8 @@ bool switch1high = true;
 bool switch2high = true;
 bool switch3high = true;
 
+bool notAlarmSuppress = true;
+
 void setup() {
   //LED 7-segment outputs
   pinMode(8, OUTPUT);
@@ -95,8 +97,12 @@ void loop() {
         switch3high = true;
       }
 
+      if(!alarmTime()){
+        notAlarmSuppress = true;
+      }
+
       
-      if(alarmTime()){
+      if(alarmTime() && notAlarmSuppress){
         next_state = ALARMs;
       }else if(setButtonPressed1() && switch1high){
         next_state = SETMODEs;
@@ -164,6 +170,7 @@ void loop() {
     case ALARMs:
     {
       updateTime();
+      notAlarmSuppress = false;
       analogWrite(6, 126);
       next_state = ALARMs;
       if(setButtonPressed2()){
@@ -269,6 +276,8 @@ void shiftAlarms(){
   int secondDigit = displayCodes[alarmMinutes / 10];
   int firstDigit = displayCodes[alarmHours];
 
+  thirdDigit = thirdDigit | DIG_DOT;
+
   digitalWrite(8, LOW);
   shiftOut(13, 9, MSBFIRST, thirdDigit);
   shiftOut(13, 9, MSBFIRST, secondDigit);
@@ -327,7 +336,7 @@ void printDayHalf(){
 }
 
 bool setButtonPressed1(){
-  if(digitalRead(2)){
+  if(digitalRead(5)){
     return true;
   }
   return false;
