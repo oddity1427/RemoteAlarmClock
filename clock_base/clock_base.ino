@@ -188,7 +188,7 @@ void loop() {
       updateTime();
       notAlarmSuppress = false;
       analogWrite(6, 126);
-      timecheck();
+      //timecheck(); not needed anymore
       next_state = ALARMs;
       if(interrupted){
         next_state = MAINs;
@@ -326,7 +326,7 @@ void updateTime(){
 }
 
 bool alarmTime(){
-  if((rtc.pm() && alarmIsPM) || ((!rtc.pm() && !alarmIsPM))){
+  if(true){
     if((rtc.hour() == alarmHours) && (rtc.minute() == alarmMinutes)){
       return true;
     }
@@ -374,16 +374,16 @@ bool setButtonPressed3(){
   return false;
 }
 
-void timecheck(){
-  mma.read();
-  if(abs(mma.x) > 2000){
-    interrupted = true;
-  }else if(abs(mma.y) > 2000){
-    interrupted = true;
-  }else if(abs(mma.z) > 5500){
-    interrupted = true;
-  }
-}
+//void timecheck(){
+//  mma.read();
+//  if(abs(mma.x) > 2000){
+//    interrupted = true;
+//  }else if(abs(mma.y) > 2000){
+//    interrupted = true;
+//  }else if(abs(mma.z) > 5500){
+//    interrupted = true;
+//  }
+//}
 
 bool isClkPM(){
   rtc.set24Hour();
@@ -396,7 +396,7 @@ bool isClkPM(){
 }
 
 void mmaInterrupt(){
-  //interrupted = true;
+  interrupted = true;
 }
 
 
