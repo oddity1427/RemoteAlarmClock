@@ -374,16 +374,6 @@ bool setButtonPressed3(){
   return false;
 }
 
-//void timecheck(){
-//  mma.read();
-//  if(abs(mma.x) > 2000){
-//    interrupted = true;
-//  }else if(abs(mma.y) > 2000){
-//    interrupted = true;
-//  }else if(abs(mma.z) > 5500){
-//    interrupted = true;
-//  }
-//}
 
 bool isClkPM(){
   rtc.set24Hour();
